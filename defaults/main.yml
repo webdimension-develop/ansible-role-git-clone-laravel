@@ -1,0 +1,57 @@
+---
+# defaults file for roles/ansible-role-git-clone
+git_clone_laravel_repository_url: "{{ secret.git_clone.git_repository_url }}"
+git_clone_laravel_fqdn: "{{ secret.git_clone.fqdn }}"
+git_clone_laravel_webserver: "httpd"
+git_clone_laravel_user: "apache"
+git_clone_laravel_group: "apache"
+git_clone_laravel_dest: "/var/www/html/project"
+git_clone_laravel_document_root: "{{ git_clone_laravel_dest }}/fw/laravel9/public"
+git_clone_laravel_ssl: true
+git_clone_laravel_user_groups:
+  nginx:
+    name: "{{ git_clone_laravel_group }}"
+    state: 'present'
+git_clone_laravel_users:
+  master:
+    name: 'master-user'
+    groups: 'wheel'
+    group: "{{ git_clone_laravel_user_groups.nginx.name }}"
+    append: 'yes'
+    state: 'present'
+    remove: 'no'
+    password: "{{ secret.git_clone_laravel_users.master_user.password }}"
+    public_key: "files/keys/ansible_rsa.pub"
+    login_shell: '/bin/bash'
+    create_home: 'yes'
+    sudo: 'present'
+    comment: 'master user'
+    expires: '-1'
+  worker001:
+    name: 'worker001'
+    groups: ''
+    group: "{{ git_clone_laravel_user_groups.nginx.name }}"
+    append: 'yes'
+    state: 'present'
+    remove: 'no'
+    password: "{{ secret.git_clone_laravel_users.worker001.password }}"
+    public_key: "files/keys/ansible_rsa.pub"
+    login_shell: '/bin/bash'
+    create_home: 'yes'
+    sudo: 'absent'
+    comment: 'worker'
+    expires: '-1'
+  worker002:
+    name: 'worker002'
+    groups: ''
+    group: "{{ git_clone_laravel_user_groups.nginx.name }}"
+    append: 'yes'
+    state: 'present'
+    remove: 'no'
+    password: "{{ secret.git_clone_laravel_users.worker002.password }}"
+    public_key: "files/keys/ansible_rsa.pub"
+    login_shell: '/bin/bash'
+    create_home: 'yes'
+    sudo: 'absent'
+    comment: 'worker'
+    expires: '-1'

@@ -1,0 +1,4 @@
+---
+# tasks file for roles/ansible-role-git-clone
+- name: Include_tasks
+  include_tasks: "{{ ansible_distribution | lower }}{{ ansible_distribution_major_version }}.yml"

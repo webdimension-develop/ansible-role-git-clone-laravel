@@ -1,0 +1,13 @@
+---
+# handlers file for roles/ansible-role-git-clone
+- name: Restart nginx
+  become: true
+  service:
+    name: nginx
+    state: restarted
+
+- name: Restart httpd
+  become: true
+  service:
+    name: httpd
+    state: restarted

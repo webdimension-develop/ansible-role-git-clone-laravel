@@ -1,0 +1,159 @@
+---
+# tasks file for git-clone
+- name: Install git
+  become: true
+  dnf:
+    name: 'git'
+    state: present
+
+- name: Install openssl
+  become: true
+  dnf:
+    name: 'openssl'
+    state: present
+
+- name: Group control
+  become: true
+  group:
+    name: "{{ item.key }}"
+    state: "{{ item.value.state }}"
+  with_dict: "{{ git_clone_laravel_user_groups }}"
+  when: git_clone_laravel_user_groups is defined
+
+- name: User-control
+  become: true
+  user:
+    name: "{{ item.value.name }}"
+    groups: "{{ item.value.groups }}"
+    group: "{{ item.value.group }}"
+    state: "{{ item.value.state }}"
+    remove: "{{ item.value.remove }}"
+    create_home: "{{ item.value.create_home }}"
+    password: "{{ item.value.password }}"
+    shell: "{{ item.value.login_shell }}"
+    comment: "{{ item.value.comment }}"
+    expires: "{{ item.value.expires }}"
+  # changed_when: False
+  with_dict: "{{ git_clone_laravel_users }}"
+  when: git_clone_laravel_users is defined
+
+- name: Set public-key
+  become: true
+  ansible.posix.authorized_key:
+    user: "{{ item.value.name }}"
+    state: "{{ item.value.state }}"
+    key: "{{ lookup('file', '{{ item.value.public_key }}') }}"
+  with_dict: "{{ git_clone_laravel_users }}"
+  when: git_clone_laravel_users is defined
+
+- name: Set secret-key
+  become: true
+  copy:
+    content: "{{ lookup('file', '{{ item.value.secret_key }}') }}"
+    dest: "/home/{{ item.value.name }}/.ssh/id_rsa"
+    owner: "{{ item.value.name }}"
+    group: "{{ item.value.group }}"
+    mode: '600'
+  with_dict: "{{ git_clone_laravel_users }}"
+  when:
+    - git_clone_laravel_users is defined
+    - item.value.secret_key is defined
+    - item.value.create_home == 'yes'
+
+- name: Add sudo authorize
+  become: true
+  lineinfile:
+    dest: /etc/sudoers
+    backup: true
+    line: "{{ item.value.name }} ALL=(ALL) NOPASSWD: ALL"
+  when:
+    - git_clone_laravel_users is defined
+    - item.value.sudo == 'present'
+  with_dict: "{{ git_clone_laravel_users }}"
+
+- name: Check cloned
+  become: true
+  stat:
+    path: "{{ git_clone_laravel_dest }}"
+  register: chk_cloned
+  changed_when: false
+  ignore_errors: true
+
+- name: Git clone
+  become: true
+  ansible.builtin.git:
+    repo: "{{ secret.git_clone.git_clone_laravel_repository_url}}"
+    dest: "{{ git_clone_laravel_dest }}"
+  when: chk_cloned.stat.exists is false
+
+- name: Document root permission
+  become: true
+  file:
+    path: "{{ git_clone_laravel_dest }}"
+    state: directory
+    owner: "{{  git_clone_laravel_user }}"
+    group: "{{  git_clone_laravel_group }}"
+    recurse: true
+    mode: "0775"
+
+- name: debug
+  debug:
+    msg: "{{ git_clone_laravel_document_root }}/../storage"
+
+- name: Document Storage
+  become: true
+  file:
+    path: "{{ git_clone_laravel_document_root }}/../storage"
+    state: directory
+    owner: "{{  git_clone_laravel_user }}"
+    group: "{{  git_clone_laravel_group }}"
+    recurse: true
+    mode: "0777"
+#- name: debug
+#  debug:
+#    msg: "{{ git_clone_laravel_fqdn }}"
+
+- name: Check vendor
+  become: true
+  stat:
+    path: "{{ git_clone_laravel_document_root }}/../vendor"
+  register: chk_vendor
+  changed_when: false
+  ignore_errors: true
+
+- name: Install Composer
+  become: true
+  composer:
+    command: install
+    working_dir: "{{ git_clone_laravel_document_root }}/../"
+  when: chk_vendor.stat.exists is false
+
+- name: Include_tasks
+  include_tasks: "letsencrypt.yml"
+  when:
+    - git_clone_laravel_ssl is true
+
+
+- name: Replace Nginx conf configure
+  become: true
+  ansible.builtin.template:
+    src: templates/nginx.conf.j2
+    dest: "/etc/nginx/conf.d/{{ git_clone_laravel_fqdn }}.conf"
+    owner: "{{ git_clone_laravel_user }}"
+    group: "{{ git_clone_laravel_group }}"
+    mode: '0644'
+  notify: Restart nginx
+  when:
+    - git_clone_laravel_webserver == 'nginx'
+
+- name: Replace Httpd conf configure
+  become: true
+  ansible.builtin.template:
+    src: templates/httpd.conf.j2
+    dest: "/etc/httpd/conf.d/{{ git_clone_laravel_fqdn }}.conf"
+    owner: "{{ git_clone_laravel_user }}"
+    group: "{{ git_clone_laravel_group }}"
+    mode: '0644'
+  notify: Restart httpd
+  when:
+    - git_clone_laravel_webserver == 'httpd'

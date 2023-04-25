@@ -1,0 +1,21 @@
+<VirtualHost *:80>
+  DocumentRoot {{ git_clone_laravel_document_root }}
+  ServerName {{ git_clone_laravel_fqdn }}
+</VirtualHost>
+
+{% if git_clone_laravel_ssl %}
+<VirtualHost *:443>
+DocumentRoot {{ git_clone_laravel_document_root }}
+ServerName {{ git_clone_laravel_fqdn }}
+<Directory "{{ git_clone_laravel_document_root }}">
+allow from all
+Options +Indexes
+</Directory>
+SSLEngine on
+SSLCertificateFile /etc/pki/tls/certs/{{ git_clone_laravel_fqdn }}/{{ git_clone_laravel_fqdn }}.crt
+SSLCertificateKeyFile /etc/pki/tls/certs/{{ git_clone_laravel_fqdn }}/{{ git_clone_laravel_fqdn }}.key
+# SSLCertificateChainFile /etc/pki/tls/certs/{{ git_clone_laravel_fqdn }}/{{ git_clone_laravel_fqdn }}.chain
+# ErrorLog /var/log/httpd/{{ git_clone_laravel_fqdn }}/error_log
+# CustomLog /var/log/httpd/{{ git_clone_laravel_fqdn }}/access_log combined
+</VirtualHost>
+{% endif %}
