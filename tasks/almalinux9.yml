@@ -112,6 +112,27 @@
 #- name: debug
 #  debug:
 #    msg: "{{ git_clone_laravel_fqdn }}"
+- name: Check env
+  become: true
+  stat:
+    path: "{{ git_clone_laravel_document_root }}/../.env"
+  register: chk_env
+  changed_when: false
+  ignore_errors: true
+
+- name: Make .env
+  become: true
+  shell:
+    command: cp .env.sample .env
+    working_dir: "{{ git_clone_laravel_document_root }}/../"
+  when: chk_env.stat.exists is false
+
+- name: generate app- key
+  become: true
+  shell:
+    command: php artisan key:generate
+    working_dir: "{{ git_clone_laravel_document_root }}/../"
+  when: chk_env.stat.exists is false
 
 - name: Check vendor
   become: true
