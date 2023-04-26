@@ -1,5 +1,21 @@
 ---
 # tasks file for roles/letsencrypt
+- name: nginx
+  become: true
+  service:
+    name: nginx
+    state: restarted
+  when:
+    - git_clone_laravel_webserver == 'nginx'
+
+- name: httpd
+  become: true
+  service:
+    name: httpd
+    state: restarted
+  when:
+    - git_clone_laravel_webserver == 'httpd'
+
 - name: Install openssl
   become: true
   dnf:
@@ -53,7 +69,7 @@
   become: true
   community.crypto.acme_certificate:
     account_key_src: "/etc/pki/tls/certs/{{ git_clone_laravel_fqdn }}/account.key"
-    account_email: "{{ letsencrypt_email }}"
+    account_email: "{{ git_clone_laravel_letsencrypt_email }}"
     csr: "/etc/pki/tls/certs/{{ git_clone_laravel_fqdn }}/{{ git_clone_laravel_fqdn }}.csr"
     dest: "/etc/pki/tls/certs/{{ git_clone_laravel_fqdn }}/{{ git_clone_laravel_fqdn }}.crt"
     # acme_directory: https://acme-v01.api.letsencrypt.org/directory    ### 403 error
@@ -73,7 +89,7 @@
   become: true
   file:
     state: directory
-    path: "{{ letsencrypt_document_root }}/{{ acme_challenge['challenge_data'][git_clone_laravel_fqdn]['http-01']['resource'] | dirname }}"
+    path: "{{ git_clone_laravel_document_root }}/{{ acme_challenge['challenge_data'][git_clone_laravel_fqdn]['http-01']['resource'] | dirname }}"
     mode: "0775"
   when: acme_challenge is changed
 
@@ -109,3 +125,38 @@
     - https
     - http
   notify: Restart firewalld
+
+- name: Replace Nginx conf configure
+  become: true
+  ansible.builtin.template:
+    src: templates/nginx_https.conf.j2
+    dest: "/etc/nginx/conf.d/{{ git_clone_laravel_fqdn }}_ssl.conf"
+    owner: "{{ git_clone_laravel_user }}"
+    group: "{{ git_clone_laravel_group }}"
+    mode: '0644'
+  notify: Restart nginx
+  when:
+    - git_clone_laravel_webserver == 'nginx'
+    -
+- name: Ssl redirect
+  become: true
+  lineinfile:
+    dest: "/etc/nginx/conf.d/{{ git_clone_laravel_fqdn }}.conf"
+    regexp: "return 301"
+    insertafter: "# return 301"
+    line: "  return 301 https://$host$request_uri;"
+  notify: Restart nginx
+  when:
+    - git_clone_laravel_webserver == 'nginx'
+
+- name: Replace Httpd conf configure
+  become: true
+  ansible.builtin.template:
+    src: templates/httpd_https.conf.j2
+    dest: "/etc/httpd/conf.d/{{ git_clone_laravel_fqdn }}_ssl.conf"
+    owner: "{{ git_clone_laravel_user }}"
+    group: "{{ git_clone_laravel_group }}"
+    mode: '0644'
+  notify: Restart httpd
+  when:
+    - git_clone_laravel_webserver == 'httpd'

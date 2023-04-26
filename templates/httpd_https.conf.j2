@@ -1,9 +1,3 @@
-<VirtualHost *:80>
-  DocumentRoot {{ git_clone_laravel_document_root }}
-  ServerName {{ git_clone_laravel_fqdn }}
-</VirtualHost>
-
-{% if git_clone_laravel_ssl %}
 <VirtualHost *:443>
 DocumentRoot {{ git_clone_laravel_document_root }}
 ServerName {{ git_clone_laravel_fqdn }}
@@ -18,4 +12,3 @@ SSLCertificateKeyFile /etc/pki/tls/certs/{{ git_clone_laravel_fqdn }}/{{ git_clo
 # ErrorLog /var/log/httpd/{{ git_clone_laravel_fqdn }}/error_log
 # CustomLog /var/log/httpd/{{ git_clone_laravel_fqdn }}/access_log combined
 </VirtualHost>
-{% endif %}

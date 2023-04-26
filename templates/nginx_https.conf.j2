@@ -1,27 +1,4 @@
 server {
-  listen 80;
-  server_name {{ git_clone_laravel_fqdn }};
-  root {{ git_clone_laravel_document_root }};
-  index index.php index.php;
-  return 301 https://$host$request_uri;
-
-  location / {
-       root {{ git_clone_laravel_document_root }};
-       index  index.html index.htm index.php;
- }
-
-  location ~* \.php(/|$) {
-     root {{ git_clone_laravel_document_root }};
-     try_files      $uri =404;
-     fastcgi_pass   unix:/run/php-fpm/www.sock;
-     fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
-     include        fastcgi_params;
-    }
-
-}
-
-{% if git_clone_laravel_ssl %}
-server {
   listen 443 ssl;
   ssl_certificate     /etc/pki/tls/certs/{{ git_clone_laravel_fqdn }}/{{ git_clone_laravel_fqdn }}.crt;
   ssl_certificate_key /etc/pki/tls/certs/{{ git_clone_laravel_fqdn }}/{{ git_clone_laravel_fqdn }}.key;
@@ -29,13 +6,12 @@ server {
   add_header X-Frame-Options "SAMEORIGIN";
   add_header X-XSS-Protection "1; mode=block";
   add_header X-Content-Type-Options "nosniff";
-  index index.php;
+  index index.php index.html;
   charset utf-8;
 
   location / {
      #try_files $uri $uri/ /index.php?$query_string;
      try_files $uri $uri/ /index.php$is_args$args;
-
   }
 
   location = /favicon.ico { access_log off; log_not_found off; }
@@ -44,7 +20,6 @@ server {
   error_page 404 /index.php;
 
   root {{ git_clone_laravel_document_root }};
-  index index.php;
 
   location ~ \.php$ {
       fastcgi_split_path_info ^(.+\.php)(/.+)$;
@@ -55,4 +30,3 @@ server {
       fastcgi_param PATH_INFO $fastcgi_path_info;
   }
 }
- {% endif %}

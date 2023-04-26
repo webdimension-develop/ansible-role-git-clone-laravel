@@ -1,13 +1,14 @@
 ---
 # defaults file for roles/ansible-role-git-clone
-git_clone_laravel_repository_url: "{{ secret.git_clone.git_repository_url }}"
-git_clone_laravel_fqdn: "{{ secret.git_clone.fqdn }}"
+git_clone_laravel_repository_url: "{{ secret.git_clone_laravel.git_repository_url }}"
+git_clone_laravel_fqdn: "{{ secret.git_clone_laravel.fqdn }}"
 git_clone_laravel_webserver: "httpd"
 git_clone_laravel_user: "apache"
 git_clone_laravel_group: "apache"
 git_clone_laravel_dest: "/var/www/html/project"
 git_clone_laravel_document_root: "{{ git_clone_laravel_dest }}"
 git_clone_laravel_ssl: true
+git_clone_laravel_letsencrypt_email: "{{ secret.git_clone_laravel.letsencrypt_email }}"
 git_clone_laravel_user_groups:
   nginx:
     name: "{{ git_clone_laravel_group }}"

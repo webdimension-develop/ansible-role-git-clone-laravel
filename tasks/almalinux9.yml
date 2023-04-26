@@ -82,7 +82,7 @@
 - name: Git clone
   become: true
   ansible.builtin.git:
-    repo: "{{ secret.git_clone.git_clone_laravel_repository_url}}"
+    repo: "{{ git_clone_laravel_repository_url }}"
     dest: "{{ git_clone_laravel_dest }}"
   when: chk_cloned.stat.exists is false
 
@@ -112,27 +112,6 @@
 #- name: debug
 #  debug:
 #    msg: "{{ git_clone_laravel_fqdn }}"
-- name: Check env
-  become: true
-  stat:
-    path: "{{ git_clone_laravel_document_root }}/../.env"
-  register: chk_env
-  changed_when: false
-  ignore_errors: true
-
-- name: Make .env
-  become: true
-  shell:
-    command: cp .env.sample .env
-    working_dir: "{{ git_clone_laravel_document_root }}/../"
-  when: chk_env.stat.exists is false
-
-- name: generate app- key
-  become: true
-  shell:
-    command: php artisan key:generate
-    working_dir: "{{ git_clone_laravel_document_root }}/../"
-  when: chk_env.stat.exists is false
 
 - name: Check vendor
   become: true
@@ -149,17 +128,37 @@
     working_dir: "{{ git_clone_laravel_document_root }}/../"
   when: chk_vendor.stat.exists is false
 
-- name: Include_tasks
-  include_tasks: "letsencrypt.yml"
-  when:
-    - git_clone_laravel_ssl is true
+- name: Debug
+  debug:
+    msg: "env path : {{ git_clone_laravel_document_root }}/../.env"
 
+- name: Check env
+  become: true
+  stat:
+    path: "{{ git_clone_laravel_document_root }}/../.env"
+  register: chk_env
+  changed_when: false
+  ignore_errors: true
+
+- name: Make .env
+  become: true
+  ansible.builtin.command: cp .env.example .env
+  args:
+    chdir: "{{ git_clone_laravel_document_root }}/../"
+  when: chk_env.stat.exists is false
+
+- name: generate app-key
+  become: true
+  ansible.builtin.command: php artisan key:generate
+  args:
+    chdir: "{{ git_clone_laravel_document_root }}/../"
+  when: chk_env.stat.exists is false
 
 - name: Replace Nginx conf configure
   become: true
   ansible.builtin.template:
-    src: templates/nginx.conf.j2
-    dest: "/etc/nginx/conf.d/{{ git_clone_laravel_fqdn }}.conf"
+    src: templates/nginx_http.conf.j2
+    dest: "/etc/nginx/conf.d/{{ git_clone_laravel_fqdn }}_http.conf"
     owner: "{{ git_clone_laravel_user }}"
     group: "{{ git_clone_laravel_group }}"
     mode: '0644'
@@ -170,11 +169,16 @@
 - name: Replace Httpd conf configure
   become: true
   ansible.builtin.template:
-    src: templates/httpd.conf.j2
-    dest: "/etc/httpd/conf.d/{{ git_clone_laravel_fqdn }}.conf"
+    src: templates/httpd_http.conf.j2
+    dest: "/etc/httpd/conf.d/{{ git_clone_laravel_fqdn }}_http.conf"
     owner: "{{ git_clone_laravel_user }}"
     group: "{{ git_clone_laravel_group }}"
     mode: '0644'
   notify: Restart httpd
   when:
     - git_clone_laravel_webserver == 'httpd'
+
+- name: Include_tasks
+  include_tasks: "letsencrypt.yml"
+  when:
+    - git_clone_laravel_ssl is true
